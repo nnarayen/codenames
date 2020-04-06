@@ -55,9 +55,9 @@ func CreateGame(words []string, existingIdentifiers map[string]bool) (string, *G
 	wordsIndex := randSeed.Perm(len(words))
 	gameWords := [numWords]*GameWord{}
 
-	// choose starting color at random, append to default word assignments
+	// choose starting color at random, clone default word assignments
 	startingColor := randSeed.Intn(2)
-	gameAssignments := append(defaultAssignments, []int{startingColor}...)
+	gameAssignments := append(append(defaultAssignments[:0:0], startingColor), defaultAssignments...)
 
 	// shuffle game assignments
 	for i := 0; i < 10; i++ {
@@ -91,7 +91,7 @@ func createWordAssignments() []int {
 	assignments = append(assignments, duplicateElement(Red, colorCards)...)
 	assignments = append(assignments, duplicateElement(Blue, colorCards)...)
 	assignments = append(assignments, duplicateElement(Neutral, colorCards-1)...)
-	assignments = append(assignments, []int{Black}...)
+	assignments = append(assignments, Black)
 
 	return assignments
 }

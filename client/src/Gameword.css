@@ -1,3 +1,16 @@
+/* spymaster reveal */
+.player-1.color-0 {
+  color: red;
+}
+
+.player-1.color-1 {
+  color: blue;
+}
+
+.player-1.color-3 {
+  color: black;
+}
+
 .revealed.color-0 {
   background: red;
   color: white;
@@ -19,6 +32,7 @@
 }
 
 .gameWord {
+  color: gray;
   text-align: center;
   vertical-align: middle;
   padding: 30px;
