@@ -36,7 +36,7 @@ type GameWord struct {
 type GameBoard struct {
 	Words         [numWords]*GameWord `json:"words"`
 	Seed          int64               `json:"seed"` // permanent seed for a given game
-	StartingColor int
+	StartingColor int                 `json:"startingColor"`
 }
 
 // create a new initialized game board
@@ -52,7 +52,7 @@ func CreateGame(words []string, existingIdentifiers map[string]bool) (string, *G
 	randSeed := rand.New(rand.NewSource(gameSeed))
 
 	// select words as permutation from dictionary
-	wordsIndex := randSeed.Perm(numWords)
+	wordsIndex := randSeed.Perm(len(words))
 	gameWords := [numWords]*GameWord{}
 
 	// choose starting color at random, append to default word assignments
@@ -67,7 +67,7 @@ func CreateGame(words []string, existingIdentifiers map[string]bool) (string, *G
 	}
 
 	// initialize words
-	for index, permIndex := range wordsIndex {
+	for index, permIndex := range wordsIndex[:numWords] {
 		gameWords[index] = &GameWord{
 			Word:     words[permIndex],
 			Color:    gameAssignments[index],

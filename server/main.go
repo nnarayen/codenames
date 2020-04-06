@@ -17,10 +17,18 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+
+	"github.com/go-redis/redis/v7"
 )
 
+// wrapper struct to hold dictionary words
 type Dictionary struct {
 	Words []string `json:"words"`
+}
+
+// body of any update board request
+type UpdateRequest struct {
+	Clicked int `json:"clicked"`
 }
 
 const (
@@ -38,6 +46,9 @@ var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 
 	// in memory store of current game connections
@@ -79,7 +90,34 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 // returns the current state of the game from redis
 func GetGameHandler(w http.ResponseWriter, r *http.Request) {
 	state, _ := redisConnection.GetKey(mux.Vars(r)["id"])
-	json.NewEncoder(w).Encode(state)
+	w.Write([]byte(state))
+}
+
+// updates a given game after a click event
+func UpdateGameHandler(w http.ResponseWriter, r *http.Request) {
+	identifier := mux.Vars(r)["id"]
+	log.Infof("received update request for game %s", identifier)
+
+	// marshal update request into struct
+	var updateRequest UpdateRequest
+	err := json.NewDecoder(r.Body).Decode(&updateRequest)
+	processError("unable to marshal update request body", err)
+
+	// fetch GameBoard state from redis
+	var gameBoard codenames.GameBoard
+	state, _ := redisConnection.GetKey(identifier)
+
+	// marshal redis value into GameBoard struct
+	err = json.Unmarshal([]byte(state), &gameBoard)
+	processError("unable to unmarshal gameboard value", err)
+
+	// update board and propagate to redis
+	gameBoard.Words[updateRequest.Clicked].Revealed = true
+	marshaledGame, _ := json.Marshal(gameBoard)
+	redisConnection.SetKey(identifier, marshaledGame)
+
+	// send empty response
+	w.Write([]byte{})
 }
 
 // creates a new game socket
@@ -110,8 +148,8 @@ func CreateGameSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &Client{
-		hub: hub,
-		conn: conn,
+		hub:      hub,
+		conn:     conn,
 		outbound: make(chan []byte),
 	}
 
@@ -122,8 +160,23 @@ func CreateGameSocketHandler(w http.ResponseWriter, r *http.Request) {
 	go client.writeMessage()
 }
 
+// checks whether a given identifier exists, surfaces 404 if not
+func gameExistenceMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identifier := mux.Vars(r)["id"]
+		_, err := redisConnection.GetKey(identifier)
+		if err == redis.Nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
 func CreateGameHandler(w http.ResponseWriter, r *http.Request) {
-	identifier, _ := codenames.CreateGame(words, redisConnection.GetKeys())
+	identifier, game := codenames.CreateGame(words, redisConnection.GetKeys())
+	marshaledGame, _ := json.Marshal(game)
+	redisConnection.SetKey(identifier, marshaledGame)
 	json.NewEncoder(w).Encode(map[string]string{"identifier": identifier})
 }
 
@@ -135,17 +188,27 @@ func cleanupHub(identifier string) {
 }
 
 func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/games/{id}", GetGameHandler).Methods("GET")
-	router.HandleFunc("/games/{id}/socket", CreateGameSocketHandler).Methods("GET")
+	router := mux.NewRouter().StrictSlash(true)
+
+	// routes that require game existence
+	subrouter := router.PathPrefix("/games/{id}").Subrouter()
+	subrouter.Use(gameExistenceMiddleware)
+	subrouter.HandleFunc("/", GetGameHandler).Methods("GET")
+	subrouter.HandleFunc("/update", UpdateGameHandler).Methods("POST")
+	subrouter.HandleFunc("/socket", CreateGameSocketHandler).Methods("GET")
+
 	router.HandleFunc("/games", CreateGameHandler).Methods("POST")
 	router.HandleFunc("/health", HealthHandler).Methods("GET")
 
+	// setup CORS
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
+
 	server := &http.Server{
-		Handler: handlers.CORS()(router),
-		ReadTimeout: 5 * time.Second,
+		Handler:      handlers.CORS(originsOk, headersOk)(router),
+		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		Addr: fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf(":%d", port),
 	}
 
 	// generate random seed for this server

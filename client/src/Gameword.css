@@ -1,0 +1,26 @@
+.revealed.color-0 {
+  background: red;
+  color: white;
+}
+
+.revealed.color-1 {
+  background: blue;
+  color: white;
+}
+
+/* neutral color */
+.revealed.color-2 {
+  background: #ede2cc;
+}
+
+.revealed.color-3 {
+  background: black;
+  color: white;
+}
+
+.gameWord {
+  text-align: center;
+  vertical-align: middle;
+  padding: 30px;
+  cursor: pointer;
+}
