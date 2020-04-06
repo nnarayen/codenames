@@ -13,25 +13,30 @@ interface GamewordProps {
 }
 
 class Gameword extends React.Component<GamewordProps, {}> {
-  _getClassName() {
-    return `${this.props.revealed ? 'revealed' : ''
-    } color-${this.props.color}`
-      + ` player-${this.props.playerType}`
+  onClick = () => {
+    const { onClick, index } = this.props;
+    onClick(index);
+  };
+
+  getClassName() {
+    const { revealed, color, playerType } = this.props;
+    return `${revealed ? 'revealed' : ''
+    } color-${color}`
+      + ` player-${playerType}`
       + ' gameWord';
   }
 
-  _onClick = () => {
-    this.props.onClick(this.props.index);
-  };
-
   public render() {
+    const { word } = this.props;
     return (
       <Col xs="2">
         <div
-          onClick={this._onClick}
-          className={this._getClassName()}
+          tabIndex={0}
+          role="button"
+          onClick={this.onClick}
+          className={this.getClassName()}
         >
-          {this.props.word}
+          {word}
         </div>
       </Col>
     );

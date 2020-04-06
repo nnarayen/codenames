@@ -36,6 +36,16 @@ interface GameWord {
 }
 
 class Gameboard extends React.Component<GameboardProps, GameboardState> {
+  // split array into chucks of GRID_SIZE
+  static chunkWords(words: GameWord[]): GameWord[][] {
+    const chunkedArr: GameWord[][] = [];
+    for (let i = 0; i < words.length; i += GRID_SIZE) {
+      chunkedArr.push(words.slice(i, i + GRID_SIZE));
+    }
+
+    return chunkedArr;
+  }
+
   constructor(props: GameboardProps) {
     super(props);
     this.state = {
@@ -50,11 +60,12 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
 
   // register websocket, fetch game state
   componentDidMount = async () => {
+    const { match } = this.props;
     try {
-      const ws = new WebSocket(`ws://localhost:8080/games/${this.props.match.params.identifier}/socket`);
+      const ws = new WebSocket(`wss://${window.location.host}/api/games/${match.params.identifier}/socket`);
       ws.onmessage = this.onSocketMessage;
 
-      const result = await axios.get(`http://localhost:8080/games/${this.props.match.params.identifier}`);
+      const result = await axios.get(`/api/games/${match.params.identifier}`);
       this.setState(result.data as GameboardState);
     } catch (error) {
       if (error.response.status === 404) {
@@ -66,23 +77,14 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
   };
 
   // send click event to backend server
-  _onWordClick = async (index: number) => {
-    await axios.post(`http://localhost:8080/games/${this.props.match.params.identifier}/update`, {
+  onWordClick = async (index: number) => {
+    const { match } = this.props;
+    await axios.post(`/api/games/${match.params.identifier}/update`, {
       clicked: index,
     });
   };
 
-  // split array into chucks of GRID_SIZE
-  chunkWords(words: GameWord[]): GameWord[][] {
-    const chunkedArr: GameWord[][] = [];
-    for (let i = 0; i < words.length; i += GRID_SIZE) {
-      chunkedArr.push(words.slice(i, i + GRID_SIZE));
-    }
-
-    return chunkedArr;
-  }
-
-  _onPlayerClick = (event: MouseEvent<HTMLButtonElement>) => {
+  onPlayerClick = (event: MouseEvent<HTMLButtonElement>) => {
     const value = (event.target as HTMLButtonElement).getAttribute('value');
     this.setState({
       playerType: Number(value),
@@ -90,18 +92,17 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
   };
 
   public render() {
+    const { match } = this.props;
+    const { notFound, words, playerType } = this.state;
     return (
       <Container>
         {
-          this.state.notFound ? (
+          notFound ? (
             <p>
-              Game
-              {this.props.match.params.identifier}
-              {' '}
-              does not exist idiot
+              {`Game ${match.params.identifier} does not exist idiot`}
             </p>
           ) : (
-            this.chunkWords(this.state.words).map((chunk, index) => (
+            Gameboard.chunkWords(words).map((chunk, index) => (
               <Row key={index}>
                 {
                     chunk.map((info, chunkIndex) => {
@@ -113,8 +114,8 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
                           color={info.color}
                           revealed={info.revealed}
                           index={wordIndex}
-                          onClick={this._onWordClick}
-                          playerType={this.state.playerType}
+                          onClick={this.onWordClick}
+                          playerType={playerType}
                         />
                       );
                     })
@@ -130,8 +131,8 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
           </Col>
           <Col xs="8">
             <ToggleButtonGroup type="radio" name="Player type" defaultValue={0}>
-              <ToggleButton onClick={this._onPlayerClick} value={0}>Player</ToggleButton>
-              <ToggleButton onClick={this._onPlayerClick} value={1}>Spymaster</ToggleButton>
+              <ToggleButton onClick={this.onPlayerClick} value={0}>Player</ToggleButton>
+              <ToggleButton onClick={this.onPlayerClick} value={1}>Spymaster</ToggleButton>
             </ToggleButtonGroup>
           </Col>
         </Row>

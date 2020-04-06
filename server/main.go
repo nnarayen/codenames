@@ -31,13 +31,12 @@ type UpdateRequest struct {
 	Clicked int `json:"clicked"`
 }
 
-const (
-	port = 8080
-)
-
 var (
 	// current working directory used for path lookups
 	cwd, _ = os.Getwd()
+
+	// serve static files in production environment
+	staticAssets = filepath.Join(cwd, "/static/web")
 
 	// dictionary for games
 	words = loadWords()
@@ -187,18 +186,38 @@ func cleanupHub(identifier string) {
 	redisConnection.Unsubscribe(identifier)
 }
 
+// handle serving static assets in bundled environment
+func SpaHandler(w http.ResponseWriter, r *http.Request) {
+	path, _ := filepath.Abs(r.URL.Path)
+	filename := filepath.Join(staticAssets, path)
+
+	// check whether a file exists at the given path
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		// file does not exist, serve index.html
+		http.ServeFile(w, r, filepath.Join(staticAssets, "index.html"))
+		return
+	}
+
+	// otherwise, use http.FileServer to serve the static dir
+	http.FileServer(http.Dir(staticAssets)).ServeHTTP(w, r)
+}
+
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	// routes that require game existence
-	subrouter := router.PathPrefix("/games/{id}").Subrouter()
+	subrouter := router.PathPrefix("/api/games/{id}").Subrouter()
 	subrouter.Use(gameExistenceMiddleware)
 	subrouter.HandleFunc("/", GetGameHandler).Methods("GET")
 	subrouter.HandleFunc("/update", UpdateGameHandler).Methods("POST")
 	subrouter.HandleFunc("/socket", CreateGameSocketHandler).Methods("GET")
 
-	router.HandleFunc("/games", CreateGameHandler).Methods("POST")
+	router.HandleFunc("/api/games", CreateGameHandler).Methods("POST")
 	router.HandleFunc("/health", HealthHandler).Methods("GET")
+
+	// static html/js/css assets
+	router.PathPrefix("/").HandlerFunc(SpaHandler)
 
 	// setup CORS
 	originsOk := handlers.AllowedOrigins([]string{"*"})
@@ -208,7 +227,7 @@ func main() {
 		Handler:      handlers.CORS(originsOk, headersOk)(router),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")),
 	}
 
 	// generate random seed for this server
@@ -216,6 +235,7 @@ func main() {
 
 	// start redis client
 	go redisConnection.PropagateUpdate()
+	redisConnection.SetKeyspaceEvents()
 
 	// start server
 	log.Infof("server started")

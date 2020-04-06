@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"regexp"
 	"time"
@@ -17,13 +18,17 @@ type RedisConnection struct {
 
 const (
 	keyspaceFormat = "__keyspace@0__:%s"
+	keyspaceEvents = "KA"
 )
 
 var (
+	redisRegex = regexp.MustCompile("redis://rediscloud:(.*)@(.*)")
+	match = redisRegex.FindStringSubmatch(os.Getenv("REDISCLOUD_URL"))
+
 	// construct redis client
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
+		Addr:     match[2],
+		Password: match[1],
 		DB:       0,  // use default DB
 	})
 
@@ -59,6 +64,13 @@ func (rc *RedisConnection) SetKey(key string, value []byte) error {
 func (rc *RedisConnection) Subscribe(key string) error {
 	log.Infof("subscribing to key %s", key)
 	return pubsub.Subscribe(fmt.Sprintf(keyspaceFormat, key))
+}
+
+
+// enable keyspace events
+func (rc *RedisConnection) SetKeyspaceEvents() error {
+	log.Infof("setting keyspace events to %s", keyspaceEvents)
+	return redisClient.ConfigSet("notify-keyspace-events", keyspaceEvents).Err()
 }
 
 // unsubscribe to a given key channel

@@ -28,19 +28,22 @@ class Home extends React.Component<HomeProps, {}> {
     this.buttonInput = React.createRef();
   }
 
-  _onKeyUp = (event: React.KeyboardEvent) => {
+  onKeyUp = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
-      this._onJoinClick();
+      this.onJoinClick();
     }
   };
 
-  _onJoinClick = () => {
-    this.props.history.push(`/games/${this.textInput.current!.value}`);
+  onJoinClick = () => {
+    const { history } = this.props;
+    history.push(`/games/${this.textInput.current!.value}`);
   };
 
-  _onCreateClick = async () => {
-    const result = (await axios.post('http://localhost:8080/games')).data as CreateResponse;
-    this.props.history.push(`/games/${result.identifier}`);
+  onCreateClick = async () => {
+    const result = (await axios.post('/api/games')).data as CreateResponse;
+
+    const { history } = this.props;
+    history.push(`/games/${result.identifier}`);
   };
 
   public render() {
@@ -53,16 +56,16 @@ class Home extends React.Component<HomeProps, {}> {
           <Row>
             <Col xs="4">
               <InputGroup>
-                <FormControl ref={this.textInput} onKeyUp={this._onKeyUp} placeholder="Game identifier" aria-label="Game identifier" />
+                <FormControl ref={this.textInput} onKeyUp={this.onKeyUp} placeholder="Game identifier" aria-label="Game identifier" />
                 <InputGroup.Append>
-                  <Button ref={this.buttonInput} onClick={this._onJoinClick}>Join</Button>
+                  <Button ref={this.buttonInput} onClick={this.onJoinClick}>Join</Button>
                 </InputGroup.Append>
               </InputGroup>
             </Col>
           </Row>
           <br />
           <Row>
-            <Button onClick={this._onCreateClick}>Create game</Button>
+            <Button onClick={this.onCreateClick}>Create game</Button>
           </Row>
         </Container>
       </div>
