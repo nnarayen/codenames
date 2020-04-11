@@ -11,6 +11,10 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
+import { toast } from 'react-toastify';
+
+import './stylesheets/home.scss';
+
 interface HomeProps extends RouteComponentProps<any> { }
 
 interface CreateResponse {
@@ -34,9 +38,23 @@ class Home extends React.Component<HomeProps, {}> {
     }
   };
 
-  onJoinClick = () => {
-    const { history } = this.props;
-    history.push(`/games/${this.textInput.current!.value}`);
+  onJoinClick = async () => {
+    const identifier = this.textInput.current!.value;
+
+    if (!identifier) {
+      toast.error('Need to enter a game to join!');
+      return;
+    }
+
+    try {
+      await axios.get(`/api/games/${identifier}`); // check if game exists
+      const { history } = this.props;
+      history.push(`/games/${this.textInput.current!.value}`);
+    } catch (error) {
+      if (error.response.status === 404) { // game doesn't exist
+        toast.error(`Game ${identifier} doesn't exist`);
+      }
+    }
   };
 
   onCreateClick = async () => {
@@ -48,12 +66,9 @@ class Home extends React.Component<HomeProps, {}> {
 
   public render() {
     return (
-      <div id="home-container">
+      <div>
         <Container>
-          <Row>
-            <h2>Codenames</h2>
-          </Row>
-          <Row>
+          <Row className="justify-content-center">
             <Col xs="4">
               <InputGroup>
                 <FormControl ref={this.textInput} onKeyUp={this.onKeyUp} placeholder="Game identifier" aria-label="Game identifier" />
@@ -63,9 +78,8 @@ class Home extends React.Component<HomeProps, {}> {
               </InputGroup>
             </Col>
           </Row>
-          <br />
-          <Row>
-            <Button onClick={this.onCreateClick}>Create game</Button>
+          <Row className="justify-content-center">
+            <Button className="create-button" onClick={this.onCreateClick}>Create game</Button>
           </Row>
         </Container>
       </div>

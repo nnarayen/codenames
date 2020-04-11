@@ -12,7 +12,11 @@ import Button from 'react-bootstrap/Button';
 import ToggleButtonGroup from 'react-bootstrap/ToggleButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
+import { toast } from 'react-toastify';
+
 import Gameword from './Gameword';
+
+import './stylesheets/Gameboard.scss';
 
 const GRID_SIZE = 5;
 
@@ -26,7 +30,6 @@ interface GameboardState {
   words: GameWord[];
   playerType: number;
   startingColor?: number;
-  notFound?: boolean;
 }
 
 interface GameWord {
@@ -68,10 +71,10 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
       const result = await axios.get(`/api/games/${match.params.identifier}`);
       this.setState(result.data as GameboardState);
     } catch (error) {
-      if (error.response.status === 404) {
-        this.setState({
-          notFound: true,
-        });
+      if (error.response.status === 404) { // game doesn't exist
+        toast.error(`Game ${match.params.identifier} does not exist!`);
+        const { history } = this.props;
+        history.push('/');
       }
     }
   };
@@ -92,44 +95,36 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
   };
 
   public render() {
-    const { match } = this.props;
-    const { notFound, words, playerType } = this.state;
+    const { words, playerType } = this.state;
     return (
       <Container>
         {
-          notFound ? (
-            <p>
-              {`Game ${match.params.identifier} does not exist idiot`}
-            </p>
-          ) : (
-            Gameboard.chunkWords(words).map((chunk, index) => (
-              <Row key={index}>
-                {
-                    chunk.map((info, chunkIndex) => {
-                      const wordIndex = index * GRID_SIZE + chunkIndex;
-                      return (
-                        <Gameword
-                          key={wordIndex}
-                          word={info.word}
-                          color={info.color}
-                          revealed={info.revealed}
-                          index={wordIndex}
-                          onClick={this.onWordClick}
-                          playerType={playerType}
-                        />
-                      );
-                    })
-                  }
-              </Row>
-            ))
-          )
+          Gameboard.chunkWords(words).map((chunk, index) => (
+            <Row key={index} className="justify-content-center game-row">
+              {
+                  chunk.map((info, chunkIndex) => {
+                    const wordIndex = index * GRID_SIZE + chunkIndex;
+                    return (
+                      <Gameword
+                        key={wordIndex}
+                        word={info.word}
+                        color={info.color}
+                        revealed={info.revealed}
+                        index={wordIndex}
+                        onClick={this.onWordClick}
+                        playerType={playerType}
+                      />
+                    );
+                  })
+                }
+            </Row>
+          ))
         }
-        <br />
-        <Row>
+        <Row className="justify-content-center game-buttons">
           <Col xs="2">
             <Button href="/">Home</Button>
           </Col>
-          <Col xs="8">
+          <Col xs="2">
             <ToggleButtonGroup type="radio" name="Player type" defaultValue={0}>
               <ToggleButton onClick={this.onPlayerClick} value={0}>Player</ToggleButton>
               <ToggleButton onClick={this.onPlayerClick} value={1}>Spymaster</ToggleButton>

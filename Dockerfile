@@ -7,6 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-w" -a -o /main .
 
 # build the react static assets
 FROM node:alpine3.10 AS node_builder
+RUN apk --no-cache add build-base python2
 COPY --from=server_builder /app/client ./
 RUN npm ci --production
 RUN npm run build

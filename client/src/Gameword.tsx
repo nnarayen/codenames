@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Col from 'react-bootstrap/Col';
 
-import './Gameword.css';
+import './stylesheets/Gameword.scss';
 
 interface GamewordProps {
   word: string;
