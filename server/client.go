@@ -13,7 +13,10 @@ const (
 	writeWait = 10 * time.Second
 
 	// time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = 45 * time.Second
+
+	// send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
 )
 
 
@@ -33,9 +36,10 @@ func (c *Client) readMessage() {
 		c.hub.deregister <- c
 		c.conn.Close()
 	}()
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.conn.ReadMessage()
-		c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 		if err != nil { // websocket unexpectedly closed
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("unexpected socket close: %v", err)
@@ -48,7 +52,9 @@ func (c *Client) readMessage() {
 
 // writeMessage writes an outbound message to the websocket
 func (c *Client) writeMessage() {
+	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		ticker.Stop()
 		c.conn.Close()
 	}()
 	for {
@@ -70,6 +76,11 @@ func (c *Client) writeMessage() {
 			writer.Write(message)
 			if err := writer.Close(); err != nil {
 				log.Errorf("unable to close connection writer: %v", message, err)
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
 			}
 		}
 	}

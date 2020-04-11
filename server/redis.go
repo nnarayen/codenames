@@ -18,7 +18,7 @@ type RedisConnection struct {
 
 const (
 	keyspaceFormat = "__keyspace@0__:%s"
-	keyspaceEvents = "KA"
+	keyspaceEvents = "K$"
 )
 
 var (
@@ -92,6 +92,7 @@ func (rc *RedisConnection) PropagateUpdate() {
 			return
 		}
 
+		log.Infof("message %s", msg)
 		match := keyspaceRegex.FindStringSubmatch(msg.Channel)
 		identifier := match[1]
 
