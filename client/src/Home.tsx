@@ -69,7 +69,7 @@ class Home extends React.Component<HomeProps, {}> {
       <div>
         <Container>
           <Row className="justify-content-center">
-            <Col xs="4">
+            <Col xs="8" md="6" lg="4">
               <InputGroup>
                 <FormControl ref={this.textInput} onKeyUp={this.onKeyUp} placeholder="Game identifier" aria-label="Game identifier" />
                 <InputGroup.Append>

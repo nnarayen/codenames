@@ -20,6 +20,12 @@ import './stylesheets/Gameboard.scss';
 
 const GRID_SIZE = 5;
 
+// enums for possible colors
+enum Color {
+  Red = "Red",
+  Blue = "Blue",
+};
+
 interface GameboardParams {
   identifier: string;
 }
@@ -94,8 +100,27 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
     });
   };
 
+  // calculate the number of remaining words
+  calculateRemaining = () => {
+    const remainingWords = {
+      [Color.Red]: 0,
+      [Color.Blue]: 0,
+    };
+
+    this.state.words.forEach((word) => {
+      if (word.color === 0) {
+        remainingWords[Color.Red] += (word.revealed ? 0 : 1);
+      } else if (word.color === 1) {
+        remainingWords[Color.Blue] += (word.revealed ? 0 : 1);
+      }
+    });
+
+    return remainingWords;
+  }
+
   public render() {
     const { words, playerType } = this.state;
+    const remainingWords = this.calculateRemaining();
     return (
       <Container>
         {
@@ -123,6 +148,17 @@ class Gameboard extends React.Component<GameboardProps, GameboardState> {
         <Row className="justify-content-center game-buttons">
           <Col xs="2">
             <Button href="/">Home</Button>
+          </Col>
+          <Col xs="2" className="remaining">
+            <span className="remaining-0">
+              Red:
+              { ` ${remainingWords[Color.Red]}` }
+            </span>
+            |
+            <span className="remaining-1">
+              Blue:
+              { ` ${remainingWords[Color.Blue]}` }
+            </span>
           </Col>
           <Col xs="2">
             <ToggleButtonGroup type="radio" name="Player type" defaultValue={0}>

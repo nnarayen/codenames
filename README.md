@@ -1,5 +1,7 @@
 # Codenames
 
+![Screen Shot 2020-04-11 at 12 14 24 AM](https://user-images.githubusercontent.com/1946683/79037870-9c39ef80-7b89-11ea-996b-06a962a4db05.png)
+
 Hosted at https://codenames-socket.herokuapp.com/
 
 Simple implementation of the popular codenames app using

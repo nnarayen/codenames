@@ -92,7 +92,6 @@ func (rc *RedisConnection) PropagateUpdate() {
 			return
 		}
 
-		log.Infof("message %s", msg)
 		match := keyspaceRegex.FindStringSubmatch(msg.Channel)
 		identifier := match[1]
 
